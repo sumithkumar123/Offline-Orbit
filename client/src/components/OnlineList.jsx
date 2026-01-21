@@ -2,11 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import usePresence from "../hooks/usePresence";
 import http from "../api/http";
-
-const AVATAR = (name = "User") =>
-  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-    name
-  )}&backgroundType=gradientLinear&fontFamily=Helvetica`;
+import Avatar from "./Avatar";
 
 export default function OnlineList({
   onSelectUser,
@@ -130,14 +126,12 @@ export default function OnlineList({
         const color = isOffline
           ? "text-paper-500"
           : u.status === "busy"
-          ? "text-red-400"
-          : u.status === "away"
-          ? "text-yellow-400"
-          : "text-green-400";
-        const avatarSrc = u.image || AVATAR(u.name);
+            ? "text-red-400"
+            : u.status === "away"
+              ? "text-yellow-400"
+              : "text-green-400";
         const statusLabel = isOffline ? "offline" : u.status || "online";
         const tagLabel = u.tag || "No tag set";
-
         return (
           <button
             key={u.userId}
@@ -148,12 +142,13 @@ export default function OnlineList({
             className="w-full flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-800/50 hover:bg-ink-700/40 transition px-3 py-2.5"
             title={`${u.name || "User"} - ${statusLabel}`}
           >
-            <img
-              src={avatarSrc}
-              alt={u.name || "User"}
-              className="h-10 w-10 rounded-full border border-ink-600 bg-ink-700 object-cover"
+            <Avatar
+              src={u.image}
+              name={u.name}
+              className="h-10 w-10 rounded-full border border-ink-600 bg-ink-700"
             />
             <div className="min-w-0 flex-1 text-left">
+
               <div className="flex items-center gap-2">
                 <span className="truncate font-medium">{u.name || "User"}</span>
                 <span className={`text-xs ${color}`}>{statusLabel}</span>

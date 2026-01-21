@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
       'process.env': env, // make env vars available
     },
     server: {
+      host: true,
       proxy: {
         '/api': {
           target: proxyTarget,

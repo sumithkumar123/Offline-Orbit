@@ -4,8 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { PhoneOff, Mic, MicOff, Volume2, ChevronLeft } from "lucide-react";
 import { useCall } from "../hooks/useCall";
 
-const AVATAR = (name = "User") =>
-  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundType=gradientLinear&fontFamily=Helvetica`;
+import Avatar from "./Avatar";
 
 export default function AudioCall() {
   const { id } = useParams();
@@ -30,7 +29,7 @@ export default function AudioCall() {
   useEffect(() => {
     if (remoteAudioRef.current && remoteStream) {
       remoteAudioRef.current.srcObject = remoteStream;
-      remoteAudioRef.current.play().catch(() => {});
+      remoteAudioRef.current.play().catch(() => { });
     }
   }, [remoteStream]);
 
@@ -53,10 +52,16 @@ export default function AudioCall() {
       </header>
 
       <main className="px-4 pt-10 flex flex-col items-center">
-        <img src={AVATAR(title)} alt={title} className="h-40 w-40 rounded-full border border-ink-700 bg-ink-800 object-cover" />
+        <Avatar name={title} className="h-40 w-40 rounded-full border border-ink-700 bg-ink-800" />
       </main>
 
       <div className="fixed left-1/2 -translate-x-1/2 bottom-8 w-[min(680px,92vw)]">
+        {/* Debug Info Overlay */}
+        <div className="mb-2 p-2 bg-black/50 text-[10px] text-white rounded font-mono hidden md:block">
+          State: {state} | Remote: {remoteUser?.name} <br />
+          (Check console for ICE logs)
+        </div>
+
         <div className="rounded-2xl bg-ink-800/80 border border-ink-700 px-4 py-3 grid grid-cols-3 gap-3">
           <button className="rounded-xl bg-ink-700 text-paper-50 border border-ink-600 py-3">
             <Volume2 className="mx-auto h-5 w-5" />

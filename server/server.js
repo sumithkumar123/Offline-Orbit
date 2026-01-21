@@ -1,6 +1,7 @@
 // server.js (ESM)
+import 'dotenv/config'; // Load env vars BEFORE other imports
 import express from 'express';
-import dotenv from 'dotenv';
+// import dotenv from 'dotenv'; // Removed manual config call
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -11,13 +12,14 @@ import chatRoutes from './routes/chatRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';   // ← public read-only state
 import adminRoutes from './routes/adminRoutes.js';     // ← admin toggle
 import userUpdateRoutes from "./routes/userUpdateRoutes.js";
+import uploadRoutes from './routes/uploadRoutes.js';
 
 import { initBroadcastThread } from './utils/initBroadcastThread.js';
 import { attachSocketAuth } from './middleware/authSocket.js';
 import { registerSockets } from './sockets/index.js';
 import { loadSystemState, getSystemState } from './utils/systemState.js'; // ← kill switch cache
 
-dotenv.config();
+// dotenv.config(); // Loaded at top
 
 const app = express();
 
@@ -29,13 +31,16 @@ app.use(
     credentials: true,
   })
 );
+// Serve uploaded files statically
+app.use('/uploads', express.static('public/uploads'));
 
 // REST Routes
 app.use('/api/users', userRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/system', systemRoutes); // GET /state (auth required)
 app.use('/api/admin', adminRoutes);   // GET/PUT /system (admin only)
-app.use("/api/users", userUpdateRoutes);   
+app.use('/api/upload', uploadRoutes); // New upload endpoint
+app.use("/api/users", userUpdateRoutes);
 
 async function start() {
   try {

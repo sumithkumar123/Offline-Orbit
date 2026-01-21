@@ -1,6 +1,6 @@
 // server/controllers/userUpdateController.js
 import User from "../models/userModel.js";
-import cloudinary from "../config/cloudinary.js"; // adjust path if needed
+// import cloudinary from "../config/cloudinary.js"; // Removed for offline mode
 
 // GET /api/users/profile
 // Private
@@ -55,15 +55,16 @@ export const updateProfile = async (req, res) => {
     // if (email) user.email = email;
 
     // Image upload (optional)
+    // Image upload (optional)
     if (req.file) {
-      // Upload new image to Cloudinary
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        folder: "profile_images", // any folder name you like
-      });
+      // Offline Mode: Use local file path
+      // The server serves 'public/uploads' at '/uploads'
+      // We store the relative path or full URL. Storing relative is safer for port changes.
+      // But frontend might expect full URL. Let's store relative and ensure frontend handles it,
+      // OR store full URL assuming server doesn't change common ports.
 
-      user.image = uploadResult.secure_url;
-      // If you want, you can also store public_id for future deletion
-      // user.imagePublicId = uploadResult.public_id;
+      // Better: Store relative path `/uploads/${filename}`
+      user.image = `/uploads/${req.file.filename}`;
     }
 
     const updatedUser = await user.save();

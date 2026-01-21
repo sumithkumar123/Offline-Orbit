@@ -44,19 +44,18 @@ const Register = () => {
     setPreviewUrl(file ? URL.createObjectURL(file) : "");
   };
 
-  // Upload image to Cloudinary
+  // Upload image to Local Server
   const handleImageUpload = async () => {
     if (!imageFile) return null;
     const data = new FormData();
     data.append("file", imageFile);
-    data.append("upload_preset", "user_profile"); // your preset
 
     try {
-      const res = await axios.post(
-        "https://api.cloudinary.com/v1_1/varuncloudinarycloud/image/upload",
-        data
-      );
-      return res.data.secure_url;
+      // Use our new local upload endpoint
+      const res = await http.post("/upload", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data.url; // Returns local path like /uploads/filename.ext
     } catch (error) {
       console.error("Image upload failed:", error);
       return null;
@@ -280,13 +279,12 @@ const Register = () => {
         {/* feedback */}
         {message.text && (
           <p
-            className={`mt-4 text-center text-sm ${
-              message.type === "success"
+            className={`mt-4 text-center text-sm ${message.type === "success"
                 ? "text-green-400"
                 : message.type === "error"
-                ? "text-red-400"
-                : "text-paper-400"
-            }`}
+                  ? "text-red-400"
+                  : "text-paper-400"
+              }`}
           >
             {message.text}
           </p>

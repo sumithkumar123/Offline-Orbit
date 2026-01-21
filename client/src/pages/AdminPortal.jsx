@@ -20,9 +20,7 @@ import {
   adminResetPassword,
 } from "../api/admin";
 
-const CLOUD_UPLOAD_URL =
-  "https://api.cloudinary.com/v1_1/varuncloudinarycloud/image/upload";
-const CLOUD_UPLOAD_PRESET = "user_profile";
+// Cloudinary constants removed
 
 const initialCreateForm = {
   name: "",
@@ -99,13 +97,23 @@ export default function AdminPortal() {
     };
   }, [loadUsers]);
 
+  // Use local upload
   const uploadImageIfNeeded = async () => {
     if (!createImageFile) return createForm.imageUrl?.trim() || "";
     const formData = new FormData();
     formData.append("file", createImageFile);
-    formData.append("upload_preset", CLOUD_UPLOAD_PRESET);
-    const res = await axios.post(CLOUD_UPLOAD_URL, formData);
-    return res.data.secure_url;
+
+    // We need to use the axios instance from api/http or build full url
+    // Let's assume we can just use the relative path if proxy is set or standard axios behavior
+    // But AdminPortal imports `axios` directly. Let's rely on that if we know base URL
+    // Actually, safer to import http from ../api/http
+    try {
+      const res = await axios.post("http://localhost:5000/api/upload", formData);
+      return res.data.url;
+    } catch (e) {
+      console.error("Upload failed", e);
+      return "";
+    }
   };
 
   const handleToggleSystem = async () => {
@@ -121,7 +129,7 @@ export default function AdminPortal() {
       console.error("adminSetSystem error:", error);
       setSystemMessage(
         error?.response?.data?.message ||
-          "Failed to update system state. Please try again."
+        "Failed to update system state. Please try again."
       );
     } finally {
       setSystemLoading(false);
@@ -146,10 +154,10 @@ export default function AdminPortal() {
     setCreateMessage("");
     try {
       let imageUrl = await uploadImageIfNeeded();
+      // Offline fallback: if no image, we just leave it empty.
+      // The <Avatar /> component handles initials automatically.
       if (!imageUrl && createForm.name) {
-        imageUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-          createForm.name
-        )}&backgroundType=gradientLinear&fontFamily=Helvetica`;
+        imageUrl = "";
       }
 
       const payload = {
@@ -187,8 +195,7 @@ export default function AdminPortal() {
     try {
       const res = await adminResetPassword(resetForm);
       setResetMessage(
-        `Password reset. Temporary password: ${
-          res?.temporaryPassword || resetForm.newPassword
+        `Password reset. Temporary password: ${res?.temporaryPassword || resetForm.newPassword
         }.`
       );
       setResetForm(initialResetForm);
@@ -281,9 +288,8 @@ export default function AdminPortal() {
           <div className="flex items-center gap-3 text-xs sm:text-sm">
             <span className="inline-flex items-center gap-1 rounded-full border border-ink-700 bg-ink-800 px-3 py-1">
               <span
-                className={`h-2 w-2 rounded-full ${
-                  systemState.running ? "bg-emerald-400" : "bg-red-400"
-                } animate-pulse`}
+                className={`h-2 w-2 rounded-full ${systemState.running ? "bg-emerald-400" : "bg-red-400"
+                  } animate-pulse`}
               />
               <span className="font-medium">
                 {systemState.running ? "System online" : "System paused"}
@@ -313,16 +319,14 @@ export default function AdminPortal() {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left text-xs md:text-sm transition
-                    ${
-                      isActive
-                        ? "bg-brand text-paper-50 shadow-elev-2"
-                        : "bg-transparent text-paper-300 hover:bg-ink-800"
+                    ${isActive
+                      ? "bg-brand text-paper-50 shadow-elev-2"
+                      : "bg-transparent text-paper-300 hover:bg-ink-800"
                     }`}
                 >
                   <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-xl ${
-                      isActive ? "bg-black/15" : "bg-ink-800"
-                    }`}
+                    className={`flex h-8 w-8 items-center justify-center rounded-xl ${isActive ? "bg-black/15" : "bg-ink-800"
+                      }`}
                   >
                     <Icon className="h-4 w-4" />
                   </span>
@@ -357,10 +361,9 @@ export default function AdminPortal() {
                   onClick={handleToggleSystem}
                   disabled={systemLoading}
                   className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition
-                    ${
-                      systemState.running
-                        ? "bg-brand hover:bg-brand-500"
-                        : "bg-emerald-600 hover:bg-emerald-500"
+                    ${systemState.running
+                      ? "bg-brand hover:bg-brand-500"
+                      : "bg-emerald-600 hover:bg-emerald-500"
                     } disabled:opacity-60`}
                 >
                   {systemLoading ? (

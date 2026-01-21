@@ -31,11 +31,30 @@ export function CallProvider({ children }) {
     if (pcRef.current) return pcRef.current;
 
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: [], // Force LAN-only (no STUN/TURN) for local network stability
     });
 
+    pc.oniceconnectionstatechange = () => {
+      console.log("[pc] iceConnectionState:", pc.iceConnectionState);
+      // If we go to "disconnected" or "failed", we might want to show that
+    };
+
     pc.onicecandidate = (e) => {
-      if (!e.candidate) return;
+      // Log EVERYTHING initially to see if we are getting anything at all
+      if (e.candidate) {
+        console.log("[ice] RAW candidate:", e.candidate.candidate);
+      } else {
+        console.log("[ice] gathering finished (null candidate)");
+        return;
+      }
+
+      // ⚠️ IPv6 Filter: Ignore candidates with colons (e.g. [2001:...])
+      if (e.candidate.address && e.candidate.address.includes(':')) {
+        console.log("[ice] ignoring IPv6 candidate:", e.candidate.address);
+        return;
+      }
+
+      console.log("[ice] local candidate (v4):", e.candidate.type, e.candidate.address);
       const to = remoteUser?.userId || remoteUser;
       if (!to) return;
       ensureSocket().emit("call:ice", { to, candidate: e.candidate });
@@ -59,9 +78,14 @@ export function CallProvider({ children }) {
       const cs = pc.connectionState;
       console.log("[pc] connectionState:", cs);
       if (cs === "connected") setState("active");
-      if (["failed", "disconnected", "closed"].includes(cs)) {
+      if (cs === "failed" || cs === "closed") {
+        console.error("Connection failed or closed:", cs);
+        if (state === "active" || state === "connecting") {
+          alert("Call connection failed. Please check network/firewalls.");
+        }
         cleanup();
       }
+      // 'disconnected' can be temporary (e.g. flaky wifi), so we don't auto-kill
     };
 
     pcRef.current = pc;
@@ -69,21 +93,23 @@ export function CallProvider({ children }) {
   };
 
   const startLocalMedia = async (withVideo) => {
+    console.log("[media] startLocalMedia requesting access...");
     // stop old tracks if any
     if (localStream) {
-      try { localStream.getTracks().forEach((t) => t.stop()); } catch {}
+      try { localStream.getTracks().forEach((t) => t.stop()); } catch { }
     }
     const constraints = withVideo
       ? { audio: true, video: { width: 640, height: 360, frameRate: 24 } }
       : { audio: true, video: false };
 
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    console.log("[media] success, got stream:", stream.id);
     setLocalStream(stream);
 
     const pc = ensurePc();
     // Clear old senders before adding new tracks
     pc.getSenders().forEach((s) => {
-      try { pc.removeTrack(s); } catch {}
+      try { pc.removeTrack(s); } catch { }
     });
     stream.getTracks().forEach((t) => pc.addTrack(t, stream));
     return stream;
@@ -119,14 +145,14 @@ export function CallProvider({ children }) {
     if (cleaningRef.current) return; // prevent loops
     cleaningRef.current = true;
 
-    try { pcRef.current?.close(); } catch {}
+    try { pcRef.current?.close(); } catch { }
     pcRef.current = null;
 
-    try { localStream?.getTracks().forEach((t) => t.stop()); } catch {}
+    try { localStream?.getTracks().forEach((t) => t.stop()); } catch { }
     setLocalStream(null);
 
     // Remove tracks from remote stream without replacing the object
-    try { remoteStream.getTracks().forEach((t) => remoteStream.removeTrack(t)); } catch {}
+    try { remoteStream.getTracks().forEach((t) => remoteStream.removeTrack(t)); } catch { }
 
     remoteDescSetRef.current = false;
     pendingRemoteCandidatesRef.current = [];
@@ -162,6 +188,7 @@ export function CallProvider({ children }) {
     };
 
     const onIce = async ({ from, candidate }) => {
+      console.log("[ice] incoming candidate from", from, candidate?.type, candidate?.address);
       await addIceCandidateSafe(candidate);
     };
 
@@ -193,7 +220,18 @@ export function CallProvider({ children }) {
     setRemoteUser({ userId: to, name: toUser?.name || undefined });
     setState("calling");
 
-    await startLocalMedia(withVideo);
+    try {
+      await startLocalMedia(withVideo);
+    } catch (err) {
+      console.error("Failed to get local media:", err);
+      alert(
+        "Could not access microphone/camera. \n\n" +
+        "If you are on a different device on the network, browsers block media on 'http://'.\n" +
+        "Solution: Enable 'Insecure origins treated as secure' in chrome://flags for this IP."
+      );
+      setState("idle");
+      return;
+    }
     const pc = ensurePc();
 
     const offer = await pc.createOffer({
@@ -208,7 +246,7 @@ export function CallProvider({ children }) {
       const token = localStorage.getItem("token") || "";
       const payload = JSON.parse(atob(token.split(".")[1] || "e30="));
       myName = payload?.name;
-    } catch {}
+    } catch { }
 
     ensureSocket().emit("call:ring", { to, offer, fromName: myName }, (ack) => {
       if (!ack?.ok) {

@@ -8,11 +8,8 @@ import { getSocket, connectSocket } from "../lib/socket";
 import { ensureThread, fetchMessages } from "../api/chat";
 import MessageInput from "../components/MessageInput";
 import { useCall } from "../hooks/useCall";
-
-const AVATAR = (name = "User") =>
-  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-    name
-  )}&backgroundType=gradientLinear&fontFamily=Helvetica`;
+import Avatar from "../components/Avatar";
+// AVATAR constant removed
 
 export default function Direct() {
   const { id } = useParams(); // /chat/:userId
@@ -36,7 +33,7 @@ export default function Direct() {
   let meId = null;
   try {
     meId = JSON.parse(atob(token.split(".")[1] || "e30="))?.id || null;
-  } catch {}
+  } catch { }
 
   // chat state
   const [selected, setSelected] = useState(null);
@@ -167,10 +164,10 @@ export default function Direct() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-ink-700">
             <div className="flex items-center gap-3 min-w-0">
-              <img
-                src={selected?.image || AVATAR(selected?.name)}
-                alt={selected?.name || "User"}
-                className="h-9 w-9 rounded-full border border-ink-600 bg-ink-700 object-cover"
+              <Avatar
+                src={selected?.image}
+                name={selected?.name}
+                className="h-9 w-9 rounded-full border border-ink-600 bg-ink-700"
               />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -220,16 +217,14 @@ export default function Direct() {
               return (
                 <div
                   key={m._id}
-                  className={`max-w-[72%] ${
-                    mine ? "ml-auto text-right" : ""
-                  }`}
+                  className={`max-w-[72%] ${mine ? "ml-auto text-right" : ""
+                    }`}
                 >
                   <div
-                    className={`inline-block rounded-2xl px-3 py-2 ${
-                      mine
-                        ? "bg-brand text-paper-50"
-                        : "bg-ink-700/70 text-paper-50 border border-ink-600"
-                    }`}
+                    className={`inline-block rounded-2xl px-3 py-2 ${mine
+                      ? "bg-brand text-paper-50"
+                      : "bg-ink-700/70 text-paper-50 border border-ink-600"
+                      }`}
                   >
                     {m.body}
                   </div>
@@ -241,8 +236,8 @@ export default function Direct() {
                     {m.failed
                       ? " • failed"
                       : m.optimistic
-                      ? " • sending…"
-                      : ""}
+                        ? " • sending…"
+                        : ""}
                   </div>
                 </div>
               );
@@ -260,10 +255,10 @@ export default function Direct() {
       {callState === "incoming" && remoteUser && (
         <div className="fixed bottom-6 right-6 z-40 w-[320px] rounded-2xl border border-ink-700 bg-ink-800/90 backdrop-blur shadow-xl p-4">
           <div className="flex items-center gap-3">
-            <img
-              src={remoteUser?.image || AVATAR(remoteUser?.name)}
-              alt="caller"
-              className="h-12 w-12 rounded-full border border-ink-600 bg-ink-700 object-cover"
+            <Avatar
+              src={remoteUser?.image}
+              name={remoteUser?.name || remoteUser?.userId}
+              className="h-12 w-12 rounded-full border border-ink-600 bg-ink-700"
             />
             <div className="min-w-0">
               <div className="font-medium truncate">
